@@ -1,6 +1,42 @@
+// VoteWise Application Logic (Classic Mode)
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBeYPpLVxJorUZEedSevx4jn2Ym3wLOkr8",
+  authDomain: "coffee-spark-sample-app-576e1.firebaseapp.com",
+  projectId: "coffee-spark-sample-app-576e1",
+  storageBucket: "coffee-spark-sample-app-576e1.firebasestorage.app",
+  messagingSenderId: "398795286248",
+  appId: "1:398795286248:web:f3ccceb157fb2827c7cb5d"
+};
+
+// Initialize Firebase (Compat/Classic)
+let db = null;
+try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+} catch (e) {
+    console.warn("Firebase offline or blocked by browser.");
+}
+
 let userPersona = 'first-time'; 
 let explanationMode = 'simple'; 
 const SHEET_ID = '1EkQrNw4ZR1YO0d0l_3j_D4HBCjkJrzrIID0HH89peH4'; 
+
+// --- REAL FIREBASE TRACKING ---
+async function trackEvent(category, action) {
+    console.log(`📊 [Firebase Event] Category: ${category}, Action: ${action}`);
+    if (!db) return;
+    try {
+        await db.collection("interactions").add({
+            category: category,
+            action: action,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            persona: userPersona
+        });
+    } catch (e) {
+        console.warn("Firebase tracking failed:", e);
+    }
+}
 
 // Local Backup Data (If Google Sheets Sync Fails)
 const localBackup = {
@@ -21,9 +57,6 @@ const localBackup = {
 
 let appData = { content: [], timeline: [], booths: [] };
 
-/**
- * Fetch data from Google Sheets (Live Backend)
- */
 async function fetchAppData() {
     const loader = document.createElement('div');
     loader.id = 'app-loader';
@@ -183,6 +216,24 @@ function switchSection(id, element) {
     window.scrollTo({ top: contentArea.offsetTop - 50, behavior: 'smooth' });
 }
 
+function getConnectedAdvice() {
+    const nearest = appData.booths[0] || localBackup.booths[0];
+    const deadline = appData.timeline.find(t => t.Status === 'current') || localBackup.timeline[0];
+    
+    return `
+        <div style="margin-top: 1.5rem; padding: 1.25rem; background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 0.75rem; animation: slideUp 0.4s ease;">
+            <h4 style="color: var(--primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                Next Steps for You
+            </h4>
+            <ul style="font-size: 0.9rem; list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
+                <li>📍 <strong>Nearest Booth:</strong> ${nearest.Name} (${nearest.Distance})</li>
+                <li>📅 <strong>Current Task:</strong> ${deadline.Event} before ${deadline.Date}</li>
+                <li>🛠️ <strong>Action:</strong> <button onclick="switchSection('register', document.querySelectorAll('.nav-card')[3])" style="background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline;">Start Registration Now →</button></li>
+            </ul>
+        </div>
+    `;
+}
+
 function checkEligibility() {
     const ageInput = document.getElementById('age-input');
     const rawAge = ageInput.value.trim();
@@ -191,8 +242,15 @@ function checkEligibility() {
         return;
     }
     const ageNum = parseInt(rawAge, 10);
-    if (ageNum >= 18) showResult("success", "✅ Eligible!");
-    else showResult("warning", `❌ Not yet. ${18 - ageNum} years left.`);
+    if (ageNum >= 18) {
+        showResult("success", "✅ <strong>You are eligible!</strong> Here is your personalized plan:");
+        document.getElementById('eligibility-result').innerHTML += getConnectedAdvice();
+        lucide.createIcons();
+        trackEvent('Eligibility', 'Eligible');
+    } else {
+        showResult("warning", `❌ Not yet. You'll be eligible in ${18 - ageNum} years.`);
+        trackEvent('Eligibility', 'Not-Eligible');
+    }
 }
 
 function showResult(type, message) {
@@ -241,14 +299,27 @@ function scrollToBottom() { const mes = document.getElementById('chat-messages')
 
 function getMockResponse(query) {
     query = query.toLowerCase();
-    const rules = [
-        { keywords: ['vote', 'how'], responses: { 'first-time': { simple: "Register and vote!", detailed: "Check guidelines." } } },
-        { keywords: ['eligible', 'age'], responses: { 'first-time': { simple: "18+ and citizen.", detailed: "See checker." } } }
-    ];
-    for (const rule of rules) {
-        if (rule.keywords.some(k => query.includes(k))) return rule.responses['first-time']['simple'];
+    trackEvent('Chat', 'Query: ' + query);
+
+    // AI COMMAND LOGIC: Switch UI based on chat input
+    if (query.includes('eligible') || query.includes('can i')) {
+        setTimeout(() => switchSection('eligibility', document.querySelectorAll('.nav-card')[0]), 800);
+        return "I've opened the <strong>Eligibility Checker</strong> for you. Simply enter your age to begin.";
     }
-    return "Ask about registration or eligibility!";
+    if (query.includes('booth') || query.includes('where')) {
+        setTimeout(() => switchSection('pollingBooth', document.querySelectorAll('.nav-card')[4]), 800);
+        return "Switching to the <strong>Booth Locator</strong>. I'll show you the centers closest to your ward.";
+    }
+    if (query.includes('deadline') || query.includes('when')) {
+        setTimeout(() => switchSection('timeline', document.querySelectorAll('.nav-card')[2]), 800);
+        return "Opening the <strong>Election Timeline</strong>. Let's look at your upcoming deadlines.";
+    }
+    if (query.includes('help') || query.includes('guide')) {
+        setTimeout(() => switchSection('guide', document.querySelectorAll('.nav-card')[1]), 800);
+        return "Sure! Loading your personalized <strong>Voting Guide</strong> now.";
+    }
+
+    return "I can help with eligibility, booths, and deadlines. Try asking 'Am I eligible?' or 'Where is my booth?'";
 }
 
 function toggleChat() {
@@ -257,8 +328,20 @@ function toggleChat() {
     chat.classList.toggle('active');
     if(chat.classList.contains('active')) {
         toggleBtn.style.display = 'none';
+        trackEvent('Chat', 'Widget Opened');
         setTimeout(scrollToBottom, 300);
     } else {
         toggleBtn.style.display = 'flex';
     }
 }
+
+// --- GLOBAL EXPOSURE (REQUIRED FOR MODULES) ---
+window.selectPersona = selectPersona;
+window.setStyle = setStyle;
+window.switchSection = switchSection;
+window.checkEligibility = checkEligibility;
+window.sendMessage = sendMessage;
+window.toggleChat = toggleChat;
+window.sendSuggestion = sendSuggestion;
+window.handleChatKey = handleChatKey;
+window.fetchAppData = fetchAppData;
