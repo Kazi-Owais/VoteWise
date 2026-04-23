@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VotePath AI | Your Voting Assistant</title>
+    <meta name="description" content="VotePath AI is a lightweight assistant to help you navigate your voting rights and process.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <!-- Persona Selection Modal -->
+    <div id="persona-overlay" class="persona-overlay">
+        <div class="persona-modal">
+            <h2>Who are you?</h2>
+            <p>Tell us a bit about yourself so we can customize your experience.</p>
+            <div class="persona-options">
+                <button class="persona-btn" onclick="selectPersona('first-time')">
+                    <strong>First-time voter</strong>
+                    <span>New to the process, need simple steps</span>
+                </button>
+                <button class="persona-btn" onclick="selectPersona('student')">
+                    <strong>Student</strong>
+                    <span>Campus voting and student requirements</span>
+                </button>
+                <button class="persona-btn" onclick="selectPersona('professional')">
+                    <strong>Working professional</strong>
+                    <span>Quick steps and time-saving deadlines</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <header style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center;">
+            <div class="logo">
+                <i data-lucide="check-circle-2"></i>
+                <span>VotePath <strong>AI</strong></span>
+            </div>
+            
+            <!-- Explanation Style Toggle -->
+            <div class="style-toggle" role="group" aria-label="Explanation Style Toggle">
+                <button id="btn-simple" class="style-btn active" onclick="setStyle('simple')">Simple Mode</button>
+                <button id="btn-detailed" class="style-btn" onclick="setStyle('detailed')">Detailed Mode</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Hero Section -->
+            <section class="hero">
+                <h1>Your Smart Election Assistant</h1>
+                <p>Navigate the voting process with ease. Check your eligibility, follow our guides, and register today.</p>
+            </section>
+
+            <!-- Main Navigation Buttons -->
+            <nav class="nav-grid">
+                <button class="nav-card active" onclick="switchSection('eligibility', this)">
+                    <i data-lucide="user-check"></i>
+                    <h3>Check Eligibility</h3>
+                    <p>See if you're ready to vote</p>
+                </button>
+                <button class="nav-card" onclick="switchSection('guide', this)">
+                    <i data-lucide="book-open"></i>
+                    <h3>Voting Guide</h3>
+                    <p>Step-by-step instructions</p>
+                </button>
+                <button class="nav-card" onclick="switchSection('timeline', this)">
+                    <i data-lucide="calendar"></i>
+                    <h3>Election Timeline</h3>
+                    <p>Never miss a deadline</p>
+                </button>
+                <button class="nav-card" onclick="switchSection('register', this)">
+                    <i data-lucide="file-edit"></i>
+                    <h3>Register to Vote</h3>
+                    <p>Start your registration</p>
+                </button>
+                <button class="nav-card" onclick="switchSection('pollingBooth', this)">
+                    <i data-lucide="map-pin"></i>
+                    <h3>Find Booth</h3>
+                    <p>Locate nearby stations</p>
+                </button>
+            </nav>
+
+            <!-- Dynamic Content Area -->
+            <section id="content-display" class="content-section active">
+                <h2>Welcome</h2>
+                <p>Select a category above to get started with your voting journey.</p>
+            </section>
+
+            <!-- Chatbot Section -->
+            <section class="chatbot-section" id="chat">
+                <div class="chat-header" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <i data-lucide="bot"></i>
+                        <h3>Ask AI</h3>
+                    </div>
+                    <button class="close-chat" onclick="toggleChat()">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message bot">
+                        Hello! I'm your VotePath AI assistant. How can I help you navigate the election today?
+                    </div>
+                </div>
+                <!-- Quick Suggestions -->
+                <div class="chat-suggestions">
+                    <div class="suggestion-pill" onclick="sendSuggestion('Am I eligible?')">Am I eligible?</div>
+                    <div class="suggestion-pill" onclick="sendSuggestion('How to vote?')">How to vote?</div>
+                    <div class="suggestion-pill" onclick="sendSuggestion('Registration steps')">Registration steps</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="user-input" placeholder="Ask about deadlines, registration, etc..." onkeypress="handleChatKey(event)">
+                    <button onclick="sendMessage()">Send</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Floating Chat Toggle -->
+    <div class="chat-toggle" id="chat-toggle" onclick="toggleChat()">
+        <i data-lucide="message-circle"></i>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
