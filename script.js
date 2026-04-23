@@ -41,13 +41,27 @@ async function trackEvent(category, action) {
 // Local Backup Data (If Google Sheets Sync Fails)
 const localBackup = {
     content: [
-        { SectionID: 'guide', Persona: 'first-time', Mode: 'simple', Text: "1. Register. 2. Find polling place. 3. Vote." },
-        { SectionID: 'guide', Persona: 'first-time', Mode: 'detailed', Text: "1. Registration: Ensure you're on the voter rolls by Oct 15. 2. Research: Look up your local ballot. 3. Polling: Find your station." },
-        { SectionID: 'register', Persona: 'first-time', Mode: 'simple', Text: "Start your registration today." }
+        // FIRST-TIME VOTER
+        { SectionID: 'guide', Persona: 'first-time', Mode: 'simple', Text: "1. Register by Oct 15. 2. Find your station. 3. Carry your ID." },
+        { SectionID: 'guide', Persona: 'first-time', Mode: 'detailed', Text: "<strong>Comprehensive Guide:</strong> First, ensure you are on the electoral roll by checking the official portal. Research your local candidates' manifestos. On election day, bring a valid photo ID (Driver's License or Passport) to your assigned station between 7 AM and 8 PM." },
+        { SectionID: 'register', Persona: 'first-time', Mode: 'simple', Text: "New voter registration portal is open." },
+        { SectionID: 'register', Persona: 'first-time', Mode: 'detailed', Text: "You must complete the Form 6 for new registration. Ensure you have a digital passport-size photo and proof of address (electricity bill or rent agreement) ready before starting." },
+        
+        // STUDENT
+        { SectionID: 'guide', Persona: 'student', Mode: 'simple', Text: "1. Check campus residency rules. 2. Use Student ID. 3. Vote early." },
+        { SectionID: 'guide', Persona: 'student', Mode: 'detailed', Text: "<strong>Student Protocol:</strong> Most states allow students to register using either their campus or home address. If voting on campus, ensure your University ID is an approved form of identification. We recommend voting during 'Early Voting' windows to avoid mid-term exam clashes." },
+        { SectionID: 'register', Persona: 'student', Mode: 'simple', Text: "Register via your University portal link." },
+        { SectionID: 'register', Persona: 'student', Mode: 'detailed', Text: "Students away from home should request an 'Absentee Ballot' at least 30 days before the election. Check if your university has an on-campus registration drive this week." },
+
+        // PROFESSIONAL
+        { SectionID: 'guide', Persona: 'professional', Mode: 'simple', Text: "1. Skip queues with Early Voting. 2. Mail-in Ballot. 3. 5-min process." },
+        { SectionID: 'guide', Persona: 'professional', Mode: 'detailed', Text: "<strong>Executive Summary:</strong> For maximum efficiency, we suggest utilizing the 'Mail-in' ballot option. If voting in person, the 10 AM to 12 PM window is typically the least crowded. Registered professionals can often access 'Fast-Pass' lanes at major urban polling hubs." },
+        { SectionID: 'register', Persona: 'professional', Mode: 'simple', Text: "Fast-track online registration for working citizens." },
+        { SectionID: 'register', Persona: 'professional', Mode: 'detailed', Text: "Use the 'Express Registration' portal which syncs with your tax ID for faster verification. Ensure your employer allows for the mandatory 'Voter Leave' provided by law." }
     ],
     timeline: [
-        { Date: "Oct 15", Event: "Registration Deadline", Status: "current", SimpleDesc: "Register now.", DetailedDesc: "Last day for online registration." },
-        { Date: "Nov 3", Event: "Election Day", Status: "upcoming", SimpleDesc: "Vote today!", DetailedDesc: "Polls open 7 AM to 8 PM." }
+        { Date: "Oct 15", Event: "Registration Deadline", Status: "current", SimpleDesc: "Register now.", DetailedDesc: "Last day for online and mail-in registration." },
+        { Date: "Nov 3", Event: "Election Day", Status: "upcoming", SimpleDesc: "Vote today!", DetailedDesc: "Polls open 7 AM to 8 PM. Check your local station for peak hours." }
     ],
     booths: [
         { Name: "City Library", Distance: "0.5mi" },
@@ -114,12 +128,15 @@ const sections = {
     guide: {
         title: "Voting Guide",
         getContent: (persona, mode) => {
-            const row = appData.content.find(r => r.SectionID === 'guide' && r.Persona === persona && r.Mode === mode);
+            // Check Live Data first, then Local Backup
+            const row = appData.content.find(r => r.SectionID === 'guide' && r.Persona === persona && r.Mode === mode) ||
+                        localBackup.content.find(r => r.SectionID === 'guide' && r.Persona === persona && r.Mode === mode);
+            
             return `
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <p>Mode: <strong>${mode.toUpperCase()}</strong></p>
                     <div style="padding: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; line-height: 1.8;">
-                        ${row ? row.Text : "Syncing details from Google Sheets..."}
+                        ${row ? row.Text : "Voting details are being prepared for your persona."}
                     </div>
                 </div>
             `;
@@ -148,11 +165,13 @@ const sections = {
     register: {
         title: "Registration",
         getContent: (persona, mode) => {
-            const row = appData.content.find(r => r.SectionID === 'register' && r.Persona === persona && r.Mode === mode);
+            const row = appData.content.find(r => r.SectionID === 'register' && r.Persona === persona && r.Mode === mode) ||
+                        localBackup.content.find(r => r.SectionID === 'register' && r.Persona === persona && r.Mode === mode);
+            
             return `
                 <div style="text-align: center;">
                     <p style="margin-bottom: 2rem;">${row ? row.Text : "Start your registration today."}</p>
-                    <button style="padding: 1rem 2rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer;">Open Government Portal</button>
+                    <button onclick="window.open('https://vote.gov', '_blank')" style="padding: 1rem 2rem; background: var(--primary); color: white; border: none; border-radius: 0.5rem; font-weight: 700; cursor: pointer;">Open Government Portal</button>
                 </div>
             `;
         }
@@ -220,6 +239,11 @@ function getConnectedAdvice() {
     const nearest = appData.booths[0] || localBackup.booths[0];
     const deadline = appData.timeline.find(t => t.Status === 'current') || localBackup.timeline[0];
     
+    // Remote Voting Link for Students/Pros
+    const remoteLink = (userPersona === 'student' || userPersona === 'professional') 
+        ? `<li>📮 <strong>Remote Voting:</strong> <a href="https://www.vote.org/absentee-ballot/" target="_blank" style="color: var(--primary); font-weight: 700;">Request Absentee Ballot</a></li>`
+        : "";
+
     return `
         <div style="margin-top: 1.5rem; padding: 1.25rem; background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 0.75rem; animation: slideUp 0.4s ease;">
             <h4 style="color: var(--primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
@@ -228,6 +252,7 @@ function getConnectedAdvice() {
             <ul style="font-size: 0.9rem; list-style: none; display: flex; flex-direction: column; gap: 0.75rem;">
                 <li>📍 <strong>Nearest Booth:</strong> ${nearest.Name} (${nearest.Distance})</li>
                 <li>📅 <strong>Current Task:</strong> ${deadline.Event} before ${deadline.Date}</li>
+                ${remoteLink}
                 <li>🛠️ <strong>Action:</strong> <button onclick="switchSection('register', document.querySelectorAll('.nav-card')[3])" style="background: none; border: none; color: var(--primary); font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline;">Start Registration Now →</button></li>
             </ul>
         </div>
